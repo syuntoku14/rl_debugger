@@ -2,6 +2,7 @@ import numpy as np
 import cv2
 from . import visualizer
 
+
 def rollout(env, agent, rollout_steps, hooks=[]):
     obs = env.reset()
     for step in range(rollout_steps):

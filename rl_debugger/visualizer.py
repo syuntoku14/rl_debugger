@@ -4,45 +4,6 @@ from PIL import Image
 import cv2
 from .hooks import StepHook
 
-class SaliencyHook(StepHook):
-    def __init__(self, model, phi, videowriter=None):
-        self.videowriter = videowriter
-        self.phi = phi
-        self.model = SaliencyWrapper(model, phi)
-
-    def __call__(self, env, agent, result, step):
-        obs, _, _, _ = result
-        map_img, sight_img = env.render(return_rgb=True)
-        p_map, v_map = get_saliency_map(self.model, obs)
-        result_img = plot_saliency_on_img(p_map, sight_img, channel=2)
-        result_img = plot_saliency_on_img(v_map, result_img, channel=0)
-        result_img = cv2.cvtColor(result_img, cv2.COLOR_RGB2BGR)
-        map_img = cv2.cvtColor(map_img, cv2.COLOR_RGB2BGR)
-        result_img = np.concatenate((map_img, result_img), axis=1)
-        if self.videowriter is not None:
-            self.videowriter.write(result_img)
-        cv2.imshow('saliency', result_img)
-        cv2.waitKey(10)
-    
-    def close_videowriter(self):
-        self.videowriter.release()
- 
-
-class SaliencyWrapper:
-    """ Wrapper for get_saliency_map 
-        The wrapped model return policy digit and value estimation
-    """
-
-    def __init__(self, model, phi):
-        self.model = model
-        self.phi = phi
-
-    def __call__(self, obs):
-        pout, vout = self.model(self.phi(obs[None]))
-        pout = np.squeeze(pout.logits.data)
-        vout = np.squeeze(vout.data)
-        return pout, vout
-
 
 def get_mask(center, size, r):
     # get mask to add blur
@@ -79,8 +40,10 @@ def get_saliency_map(model, obs, stride=5, radius=5):
     obs_size = obs.shape[-2:]
 
     # saliency map S(t,i,j)
-    p_map = np.zeros((int(obs_size[0]/stride)+1, int(obs_size[1]/stride)+1)).astype("float32")
-    v_map = np.zeros((int(obs_size[0]/stride)+1, int(obs_size[1]/stride)+1)).astype("float32")
+    p_map = np.zeros(
+        (int(obs_size[0]/stride)+1, int(obs_size[1]/stride)+1)).astype("float32")
+    v_map = np.zeros(
+        (int(obs_size[0]/stride)+1, int(obs_size[1]/stride)+1)).astype("float32")
 
     for i in range(0, obs_size[0], stride):
         for j in range(0, obs_size[1], stride):
@@ -122,7 +85,8 @@ def plot_saliency_on_img(saliency, img, intensity=1e4, alpha=0.4, channel=2, sig
     smax, smin = saliency.max(), saliency.min()
     saliency = np.asarray(Image.fromarray(
         saliency).resize(img.shape[:2], Image.BILINEAR))
-    saliency = saliency if sigma == 0 else gaussian_filter(saliency, sigma=sigma)
+    saliency = saliency if sigma == 0 else gaussian_filter(
+        saliency, sigma=sigma)
     saliency = intensity * (saliency - smin) / (smax - smin)  # normalize
     saliency = saliency.clip(0, 255).astype('uint8')
 
