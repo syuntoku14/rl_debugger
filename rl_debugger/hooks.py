@@ -22,10 +22,24 @@ class StepHook(metaclass=ABCMeta):
         """
         raise NotImplementedError
 
+class VideoHook(StepHook):
+    def __init__(self, video_writer):
+        self.video_writer = video_writer
+
+    def __call__(self, env, agent, result, step):
+        # Red: value, Blue: policy
+        obs, _, _, _ = result
+        map_img, sight_img = env.render(return_rgb=True)
+        map_img = cv2.cvtColor(map_img, cv2.COLOR_RGB2BGR)
+        self.video_writer.write(map_img)
+
+    def close_video_writer(self):
+        self.video_writer.release()
+
 
 class SaliencyHook(StepHook):
-    def __init__(self, model, phi, videowriter=None):
-        self.videowriter = videowriter
+    def __init__(self, model, phi, video_writer=None):
+        self.video_writer = video_writer
         self.phi = phi
         self.model = SaliencyWrapper(model, phi)
 
@@ -39,10 +53,10 @@ class SaliencyHook(StepHook):
         result_img = cv2.cvtColor(result_img, cv2.COLOR_RGB2BGR)
         map_img = cv2.cvtColor(map_img, cv2.COLOR_RGB2BGR)
         result_img = np.concatenate((map_img, result_img), axis=1)
-        if self.videowriter is not None:
-            self.videowriter.write(result_img)
+        if self.video_writer is not None:
+            self.video_writer.write(result_img)
         cv2.imshow('saliency', result_img)
         cv2.waitKey(10)
 
-    def close_videowriter(self):
-        self.videowriter.release()
+    def close_video_writer(self):
+        self.video_writer.release()
